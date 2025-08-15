@@ -5,7 +5,7 @@ DATALOADER
 ----------
 
 Handling of the Benchmarking Data for RNA InferCNV methods.
-Configuration file [fetch_data.ini] handles the location of the benchmarking data.
+Configuration file [dataloader.ini] handles the location of the benchmarking data.
 ------------------------------------------------------------------------------------------------------------------------
 
 """
@@ -14,7 +14,11 @@ Configuration file [fetch_data.ini] handles the location of the benchmarking dat
 # ______________________________________________________________________________________________________________________
 import pandas as pd
 from pathlib import Path
+import pyomics
 # ______________________________________________________________________________________________________________________
+
+def __data_available():
+    pass
 
 class DataLoader:
 
@@ -31,3 +35,7 @@ class DataLoader:
     @staticmethod
     def available_datasets():
         pass
+
+
+if __name__ == "__main__":
+    pass
