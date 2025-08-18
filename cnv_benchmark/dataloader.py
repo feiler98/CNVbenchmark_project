@@ -18,11 +18,20 @@ import pyomics
 import ast
 # ______________________________________________________________________________________________________________________
 
-def _get_data_available():
+def _get_data_available() -> dict:
+    """
+    Algorithm which checks and generates a dictionary of available data based on the dataloader.ini configuration-file
+    section 'data'.
+
+    Returns
+    -------
+    dict
+        Dictionary with available multiomic datasets for every group.
+    """
     path_cfg = Path(__file__).parent / "config" / "dataloader.ini"
     if not path_cfg.exists():
         print("Configuration file 'dataloader.ini' does not exist; Creating file...")
-        path_cfg.touch()  # create configuration file if it does not exist
+        path_cfg.touch()  # create configuration-file if it does not exist
 
     # configuration file Object for handling the data
     cfg_obj = pyomics.GetConfig.get_config(str(path_cfg))
@@ -93,9 +102,9 @@ class DataLoader:
         # box in the information for terminal display
         print("""
         
-========================================================================================================================
-    // Available Datasets
-------------------------------------------------------------------------------------------------------------------------""")
+=====================================
+       // Available Datasets
+-------------------------------------""")
 
         list_count_cells = []
         for key, subdict in DataLoader.dict_available_data.items():
@@ -114,7 +123,7 @@ class DataLoader:
         sum_string = f"cells total     | {sum(list_count_cells)}"
         print("\n           "+"-"*len(sum_string))
         print(f"""           {sum_string}
-========================================================================================================================
+=====================================
 """)
 
 if __name__ == "__main__":
