@@ -86,14 +86,38 @@ class DataLoader:
 
     dict_available_data = _get_data_available()
 
-    def __init__(self):
-        pass
+    def __init__(self, fetched_group_dict_data):
+        self.fetched_group_dict_data = fetched_group_dict_data
 
     # Initialization of the dataloader
     # --------------------------------
     @classmethod
-    def fetch_data(cls):
-        pass
+    def fetch_data(cls, group_data: str, subset_filter: [str, list] = None):
+        # list of all available group directories which meet the data criteria defined in
+        # dataloader._get_data_available()
+        list_groups = list(DataLoader.dict_available_data.keys())
+
+        # check if selected group exists
+        if group_data not in list_groups:
+            string_groups = "\n    > ".join(list_groups)
+            raise ValueError(f"""
+Group is not known, please refer to the currently available groups listed below:
+    > {string_groups}
+            """)
+
+        dict_subset_group = DataLoader.dict_available_data[group_data]
+
+        # check subset_filter
+        if isinstance(subset_filter, str):
+            subset_filter = [subset_filter]
+        elif not isinstance(subset_filter, list):
+            raise ValueError("Attribute subset_filter must be the following datatypes: [str, list]")
+
+        dict_match = {tag: dict_subset_group[tag] for tag in subset_filter if tag in list(dict_subset_group.keys())}
+
+        if len(dict_match) == 0:
+            raise ValueError(f"There are no matches for given subset_filter: {subset_filter} in {group_data}!")
+
 
     # General check methods before initialization
     # -------------------------------------------
@@ -130,4 +154,4 @@ if __name__ == "__main__":
     print(Path(__file__))
     print(_get_data_available())
     DataLoader.available_datasets()
-
+    DataLoader.fetch_data("biaan_group")
