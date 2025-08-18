@@ -18,7 +18,7 @@ import pyomics
 import ast
 # ______________________________________________________________________________________________________________________
 
-def __data_available():
+def _get_data_available():
     path_cfg = Path(__file__).parent / "config" / "dataloader.ini"
     if not path_cfg.exists():
         print("Configuration file 'dataloader.ini' does not exist; Creating file...")
@@ -73,27 +73,52 @@ def __data_available():
     return dict_data_overview
 
 
-
-
-
 class DataLoader:
+
+    dict_available_data = _get_data_available()
 
     def __init__(self):
         pass
 
-    # getting the necessary config information
-
-
+    # Initialization of the dataloader
+    # --------------------------------
     @classmethod
     def fetch_data(cls):
         pass
 
+    # General check methods before initialization
+    # -------------------------------------------
     @staticmethod
     def available_datasets():
-        pass
+        # box in the information for terminal display
+        print("""
+        
+========================================================================================================================
+    // Available Datasets
+------------------------------------------------------------------------------------------------------------------------""")
 
+        list_count_cells = []
+        for key, subdict in DataLoader.dict_available_data.items():
+            # header styling
+            print(f"""
+    > {key}""")
+            print("    "+"-"*len(key))
+
+            # generate the subdict information, just get the first row of the dataframe for faster loading times
+            for data_key, data_info in subdict.items():
+                count_cells_sample = len(pd.read_csv(str(data_info["umi_count_matrix"]), index_col="Gene", nrows=0).columns)
+                list_count_cells.append(count_cells_sample)
+                print(f"""        > {data_key}
+           available cells | {count_cells_sample}""")
+
+        sum_string = f"cells total     | {sum(list_count_cells)}"
+        print("\n           "+"-"*len(sum_string))
+        print(f"""           {sum_string}
+========================================================================================================================
+""")
 
 if __name__ == "__main__":
     print(Path(__file__))
-    print(__data_available())
+    print(_get_data_available())
+    DataLoader.available_datasets()
 
