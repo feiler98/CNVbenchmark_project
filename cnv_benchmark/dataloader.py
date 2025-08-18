@@ -118,6 +118,7 @@ Group is not known, please refer to the currently available groups listed below:
         if len(dict_match) == 0:
             raise ValueError(f"There are no matches for given subset_filter: {subset_filter} in {group_data}!")
 
+        # Update the accepted dictionary dict_match with the respective dataframes
 
     # General check methods before initialization
     # -------------------------------------------
