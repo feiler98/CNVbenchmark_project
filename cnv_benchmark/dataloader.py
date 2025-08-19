@@ -41,7 +41,6 @@ def _get_data_available() -> dict:
     dict_repair_dataloader_data = {
           "data_loc": str(Path(__file__).parent),
           "requires": str(['sc_wgs_matrix', 'umi_count_matrix']),
-          "overview": str(['summary', 'available_datasets']),
           "facs": "info_by_cell"
     }
     dict_data = cfg_obj.get_repair_config_section("data", dict_repair_dataloader_data)
