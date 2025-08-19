@@ -90,6 +90,7 @@ class DataLoader:
     def __init__(self, fetched_group_dict_data: dict = None, selected_group: str = None):
         self.fetched_group_dict_data = fetched_group_dict_data
         self.selected_group = selected_group
+        self.Dataloader_obj = DataLoader
 
     # check if the Class has been initialized
     # ---------------------------------------
@@ -104,14 +105,13 @@ Use Dataloader.fetch_data(group_data: str) first.
                                  """)
 
     # help to get a full overview of what the class has to offer
-    @staticmethod
-    def help() -> None:
-
+    def help(self) -> None:
+        # rename words for interpretability’s sake
         dict_replace = {
             "bound": "classmethod",
             "function": "method"
         }
-        method_list = inspect.getmembers(DataLoader)
+        method_list = inspect.getmembers(self.Dataloader_obj)
         print("""
 ------------------------------
 | Available callable methods |
@@ -121,7 +121,7 @@ Use Dataloader.fetch_data(group_data: str) first.
                 string_description = str(items[1]).replace("<", "").split(" ")[0]
                 if string_description in dict_replace.keys():
                     string_description = dict_replace[string_description]
-                print(f"    > {items[0]}() -> {string_description}")
+                print(f"    > {str(self.Dataloader_obj).replace("'>", "").split(".")[-1]}().{items[0]}() -> {string_description}")
 
 
     # General check methods before initialization
@@ -237,9 +237,8 @@ if __name__ == "__main__":
     #print(Path(__file__))
     #print(_get_data_available())
     #DataLoader.available_datasets()
-    DataLoader.help()
+    DataLoader().help()
     wu_dataloader = DataLoader.fetch_data("wu_group", subset_filter="GBM")
     #print(wu_dataloader.get_group_info())
     #print(wu_dataloader.get_data_summary())
     print(wu_dataloader.get_data_summary())
-
