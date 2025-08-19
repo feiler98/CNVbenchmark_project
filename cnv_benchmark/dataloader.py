@@ -241,4 +241,5 @@ if __name__ == "__main__":
     #print(wu_dataloader.get_group_info())
     #print(wu_dataloader.get_data_summary())
     print(wu_dataloader.get_data_summary())
+    print(wu_dataloader.get_group_info())
     DataLoader().available_datasets()
