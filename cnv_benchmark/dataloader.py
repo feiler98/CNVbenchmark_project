@@ -96,7 +96,6 @@ class DataLoader:
         # list of all available group directories which meet the data criteria defined in
         # dataloader._get_data_available()
         list_groups = list(DataLoader.dict_available_data.keys())
-        list_groups.append("all")
 
         # check if selected group exists
         if group_data not in list_groups:
@@ -106,14 +105,7 @@ Group is not known, please refer to the currently available groups listed below:
     > {string_groups}
             """)
 
-        # select if ALL group's data or just a SPECIFIC group's data
-        # ----------------------------------------------------------
-        if group_data == "all":
-            dict_subset_group = {}
-            for _, group_dicts in DataLoader.dict_available_data:
-                dict_subset_group.update(group_dicts)
-        else:
-            dict_subset_group = DataLoader.dict_available_data[group_data]
+        dict_subset_group = DataLoader.dict_available_data[group_data]
 
         # check subset_filter
         if isinstance(subset_filter, str):
