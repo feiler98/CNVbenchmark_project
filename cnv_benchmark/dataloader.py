@@ -16,7 +16,6 @@ import pandas as pd
 from pathlib import Path
 import pyomics
 import ast
-import inspect
 from _utility._classes import Foundation
 # ______________________________________________________________________________________________________________________
 
