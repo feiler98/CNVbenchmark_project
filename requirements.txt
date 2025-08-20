@@ -5,3 +5,5 @@ seaborn
 pathlib
 pyomics
 rpy2
+anndata
+scanpy
