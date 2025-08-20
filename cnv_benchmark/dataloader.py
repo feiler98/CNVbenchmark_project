@@ -17,6 +17,7 @@ from pathlib import Path
 import pyomics
 import ast
 import inspect
+from _utility._classes import Foundation
 # ______________________________________________________________________________________________________________________
 
 def _get_data_available() -> dict:
@@ -82,46 +83,21 @@ def _get_data_available() -> dict:
     return dict_data_overview
 
 
-class DataLoader:
+class DataLoader(Foundation):
     # full dictionary with all available data
     _dict_available_data = _get_data_available()
 
     def __init__(self, fetched_group_dict_data: dict = None, selected_group: str = None):
+        super().__init__()
         self.fetched_group_dict_data = fetched_group_dict_data
         self.selected_group = selected_group
-        self.Dataloader_obj = DataLoader
-
-    # check if the Class has been initialized
-    # ---------------------------------------
-    def __check_loaded(self):
-        for keys, values in self.__dict__.items():
-            if values is None:
-                raise ValueError("""
-#################################################
-Class has not been initialized!
-Use Dataloader.fetch_data(group_data: str) first.
-#################################################
-                                 """)
-
-    # help to get a full overview of what the class has to offer
-    def help(self) -> None:
-        # rename words for interpretability’s sake
-        dict_replace = {
-            "bound": "classmethod",
-            "function": "method"
-        }
-        method_list = inspect.getmembers(self.Dataloader_obj)
-        print("""
-------------------------------
-| Available callable methods |
-------------------------------""")
-        for items in method_list:
-            if not items[0].startswith('_'):
-                string_description = str(items[1]).replace("<", "").split(" ")[0]
-                if string_description in dict_replace.keys():
-                    string_description = dict_replace[string_description]
-                print(f"    > {str(self.Dataloader_obj).replace("'>", "").split(".")[-1]}().{items[0]}() -> {string_description}")
-
+        self.class_obj = DataLoader
+        self.error_text = """
+        #################################################
+        Class has not been initialized!
+        Use Dataloader.fetch_data(group_data: str) first.
+        #################################################
+        """
 
     # General check methods before initialization
     # -------------------------------------------
@@ -193,14 +169,14 @@ Group is not known, please refer to the currently available groups listed below:
     # post-initialization
     # -------------------
     def get_as_dataframe(self) -> dict:
-        DataLoader.__check_loaded(self)
+        Foundation._check_loaded(self)
         for key, data in self.fetched_group_dict_data.items():
             self.fetched_group_dict_data[key]['sc_wgs_matrix'] = pd.read_csv(str(self.fetched_group_dict_data[key]['sc_wgs_matrix']), index_col="CHR")
             self.fetched_group_dict_data[key]['umi_count_matrix'] = pd.read_csv(str(self.fetched_group_dict_data[key]['umi_count_matrix']), index_col="Gene")
         return self.fetched_group_dict_data
 
     def get_as_path(self) -> dict:
-        DataLoader.__check_loaded(self)
+        Foundation._check_loaded(self)
         return self.fetched_group_dict_data
 
     def _group_dir_path(self) -> Path:
@@ -211,7 +187,7 @@ Group is not known, please refer to the currently available groups listed below:
         return path_group
 
     def get_group_info(self) -> (pd.DataFrame, None):
-        DataLoader.__check_loaded(self)
+        Foundation._check_loaded(self)
         path_group = DataLoader._group_dir_path(self) / f"{self.selected_group.replace("_group", "")}_summary.xlsx"
         if path_group.exists():
             return pd.read_excel(str(path_group), index_col="index")
@@ -220,7 +196,7 @@ Group is not known, please refer to the currently available groups listed below:
             return None
 
     def get_data_summary(self) -> (pd.DataFrame, None):
-        DataLoader.__check_loaded(self)
+        Foundation._check_loaded(self)
         path_group = DataLoader._group_dir_path(self) / f"{self.selected_group.replace("_group", "")}_available_datasets.xlsx"
         if path_group.exists():
             selected_datasets = list(self.fetched_group_dict_data.keys())
@@ -238,8 +214,9 @@ if __name__ == "__main__":
     #DataLoader.available_datasets()
     DataLoader().help()
     wu_dataloader = DataLoader.fetch_data("wu_group", subset_filter="GBM")
-    #print(wu_dataloader.get_group_info())
-    #print(wu_dataloader.get_data_summary())
     print(wu_dataloader.get_data_summary())
     print(wu_dataloader.get_group_info())
     DataLoader().available_datasets()
+
+    # must raise ValueError!
+    DataLoader().get_data_summary()
