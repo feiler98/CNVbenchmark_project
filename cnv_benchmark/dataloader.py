@@ -6,8 +6,8 @@ DATALOADER
 
 Handling of the Benchmarking Data for RNA InferCNV methods.
 Configuration file [dataloader.ini] handles the location of the benchmarking data.
-------------------------------------------------------------------------------------------------------------------------
 
+------------------------------------------------------------------------------------------------------------------------
 """
 
 # imports
@@ -61,7 +61,7 @@ def _get_data_available() -> dict:
 
     # structure for checking the available datasets:
     # ----------------------------------------------
-    # priority has if the DNA and RNA files are present, all other information regarding overview and facs data are optional
+    # priority: the DNA and RNA files are present, all other information regarding overview and facs data are optional
     dict_data_overview = {}
     requires_list =  ast.literal_eval(dict_data["requires"])
     for data_name, p in dict_data_dir.items():
@@ -84,6 +84,17 @@ def _get_data_available() -> dict:
 
 
 class DataLoader(Foundation):
+    """
+    Handling of the data access for the benchmarking. Dependent on the given dataloader.ini configuration file.
+
+    Attributes
+    ----------
+    fetched_group_dict_data: dict
+        Dictionary of the available datasets, including the paths for the required datafiles.
+    selected_group: str
+        Tag-name of group the selected data originates from.
+    """
+
     # full dictionary with all available data
     _dict_available_data = _get_data_available()
 
@@ -102,7 +113,15 @@ class DataLoader(Foundation):
     # General check methods before initialization
     # -------------------------------------------
     @staticmethod
-    def available_datasets():
+    def available_datasets() -> None:
+        """
+        Prints a list of available datasets as overview.
+
+        Retruns
+        -------
+        None
+        """
+
         # box in the information for terminal display
         print("""
 
@@ -136,6 +155,24 @@ class DataLoader(Foundation):
     ####################################################################################################################
     @classmethod
     def fetch_data(cls, group_data: str, subset_filter: (str, list) = None):
+        """
+        The @classmethod; initializes the class by specifying a specific group and their data.
+        It is recommended to first check the DataLoader().available_datasets() before initializing the class.
+
+        Parameters
+        ----------
+        group_data: str
+            Name tag of the group.
+        subset_filter: (str, list)
+            Either a name of a specific dataset or a list of dataset names.
+
+        Returns
+        -------
+        None
+            Post-initialization methods are used to access the data:
+            get_as_dataframe(); get_as_path(), get_group_info(), get_group_summary()
+        """
+
         # list of all available group directories which meet the data criteria defined in
         # dataloader._get_data_available()
         list_groups = list(DataLoader._dict_available_data.keys())
@@ -169,6 +206,15 @@ Group is not known, please refer to the currently available groups listed below:
     # post-initialization
     # -------------------
     def get_as_dataframe(self) -> dict:
+        """
+        Get the data as pd.DataFrame.
+
+        Returns
+        -------
+        dict
+            Dictionary of sorted pd.DataFrames.
+        """
+
         Foundation._check_loaded(self)
         for key, data in self.fetched_group_dict_data.items():
             self.fetched_group_dict_data[key]['sc_wgs_matrix'] = pd.read_csv(str(self.fetched_group_dict_data[key]['sc_wgs_matrix']), index_col="CHR")
@@ -176,6 +222,15 @@ Group is not known, please refer to the currently available groups listed below:
         return self.fetched_group_dict_data
 
     def get_as_path(self) -> dict:
+        """
+        Get the pathlib.Path object for each data-file.
+
+        Returns
+        -------
+        dict
+            Dictionary of sorted file-paths for low memory usage and individualized import.
+        """
+
         Foundation._check_loaded(self)
         return self.fetched_group_dict_data
 
@@ -187,6 +242,14 @@ Group is not known, please refer to the currently available groups listed below:
         return path_group
 
     def get_group_info(self) -> (pd.DataFrame, None):
+        """
+        Information about the group/authors of the datasets.
+
+        Returns
+        -------
+        pd.DataFrame
+            Table with information of the authors and the link to the data-associated publication.
+        """
         Foundation._check_loaded(self)
         path_group = DataLoader._group_dir_path(self) / f"{self.selected_group.replace("_group", "")}_summary.xlsx"
         if path_group.exists():
@@ -196,6 +259,15 @@ Group is not known, please refer to the currently available groups listed below:
             return None
 
     def get_data_summary(self) -> (pd.DataFrame, None):
+        """
+        Information about the loaded datasets; is dependen on the chosen subset_filter of the @classmethod.
+
+        Returns
+        -------
+        pd.DataFrame
+            Overview table with information about the individual datasets.
+        """
+
         Foundation._check_loaded(self)
         path_group = DataLoader._group_dir_path(self) / f"{self.selected_group.replace("_group", "")}_available_datasets.xlsx"
         if path_group.exists():
@@ -208,6 +280,9 @@ Group is not known, please refer to the currently available groups listed below:
             return None
     ####################################################################################################################
 
+
+# debugging
+# ---------
 if __name__ == "__main__":
     #print(Path(__file__))
     #print(_get_data_available())
