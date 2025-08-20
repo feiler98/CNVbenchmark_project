@@ -30,6 +30,7 @@ def _get_data_available() -> dict:
     dict
         Dictionary with available multiomic datasets for every group.
     """
+
     path_cfg = Path(__file__).parent / "config" / "dataloader.ini"
     if not path_cfg.exists():
         print("Configuration file 'dataloader.ini' does not exist; Creating file...")
