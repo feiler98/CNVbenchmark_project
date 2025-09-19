@@ -17,6 +17,7 @@ from pathlib import Path
 import pyomics
 import ast
 from _utility._classes import Foundation
+import re
 # ______________________________________________________________________________________________________________________
 
 def _get_data_available() -> dict:
@@ -41,8 +42,8 @@ def _get_data_available() -> dict:
     # repair the data section with these standard parameters if necessary
     dict_repair_dataloader_data = {
           "data_loc": str(Path(__file__).parent),
-          "requires": str(['sc_wgs_matrix', 'umi_count_matrix']),
-          "facs": "info_by_cell"
+          "requires": str(['GBC', 'RCM']),
+          "facs": "FACS"
     }
     dict_data = cfg_obj.get_repair_config_section("data", dict_repair_dataloader_data)
 
@@ -66,14 +67,19 @@ def _get_data_available() -> dict:
     requires_list =  ast.literal_eval(dict_data["requires"])
     for data_name, p in dict_data_dir.items():
         dict_available_genomic_files = {p_csv.stem: p_csv for p_csv in p.glob("*.csv")} # get list of all csv file paths --> standard format of count matrices
-        set_data_tags = set([p.stem.split(sep="__")[-1] for p in list(dict_available_genomic_files.values())])  # get unique dataset identifier tag
+        set_data_tags = set([p.stem.split(sep="__")[0] for p in list(dict_available_genomic_files.values())])  # get unique dataset identifier tag
         dict_accepted = {}
         for tags in set_data_tags:
             flag_keep = True  # keep the dataset or remove it
             dict_paths_files = {}
             for data_type in requires_list:  # must contain all required data files
-                if f"{data_type}__{tags}" in list(dict_available_genomic_files.keys()):
-                    dict_paths_files[data_type] = dict_available_genomic_files[f"{data_type}__{tags}"]
+
+                # Regular Expression for taking the chromosome into account; .group() for getting result as string!
+                list_keys = list(dict_available_genomic_files.keys())
+                re_tag = f"{tags}__[a-zA-Z]+_[0-9]+__{data_type}"
+                list_match = [re.match(re_tag, item).group() for item in list_keys if re.match(re_tag, item) is not None]
+                if len(list_match) > 0:
+                    dict_paths_files[data_type] = dict_available_genomic_files[list_match[0]]
                 else:
                     flag_keep = False
             if flag_keep:
@@ -139,7 +145,7 @@ class DataLoader(Foundation):
             # generate the subdict information, just get the first row of the dataframe for faster loading times
             for data_key, data_info in subdict.items():
                 count_cells_sample = len(
-                    pd.read_csv(str(data_info["umi_count_matrix"]), index_col="Gene", nrows=0).columns)
+                    pd.read_csv(str(data_info["RCM"]), index_col="Gene", nrows=0).columns)
                 list_count_cells.append(count_cells_sample)
                 print(f"""        > {data_key}
            available cells | {count_cells_sample}""")
@@ -217,8 +223,8 @@ Group is not known, please refer to the currently available groups listed below:
 
         Foundation._check_loaded(self)
         for key, data in self.fetched_group_dict_data.items():
-            self.fetched_group_dict_data[key]['sc_wgs_matrix'] = pd.read_csv(str(self.fetched_group_dict_data[key]['sc_wgs_matrix']), index_col="CHR")
-            self.fetched_group_dict_data[key]['umi_count_matrix'] = pd.read_csv(str(self.fetched_group_dict_data[key]['umi_count_matrix']), index_col="Gene")
+            self.fetched_group_dict_data[key]['GBC'] = pd.read_csv(str(self.fetched_group_dict_data[key]['GBC']), index_col="CHR")
+            self.fetched_group_dict_data[key]['RCM'] = pd.read_csv(str(self.fetched_group_dict_data[key]['RCM']), index_col="Gene")
         return self.fetched_group_dict_data
 
     def get_as_path(self) -> dict:
@@ -269,7 +275,7 @@ Group is not known, please refer to the currently available groups listed below:
         """
 
         Foundation._check_loaded(self)
-        path_group = DataLoader._group_dir_path(self) / f"{self.selected_group.replace("_group", "")}_available_datasets.xlsx"
+        path_group = DataLoader._group_dir_path(self) / f"{self.selected_group.replace("_group", "")}_availableDatasets.xlsx"
         if path_group.exists():
             selected_datasets = list(self.fetched_group_dict_data.keys())
             df = pd.read_excel(str(path_group), index_col="index")
@@ -286,12 +292,12 @@ Group is not known, please refer to the currently available groups listed below:
 if __name__ == "__main__":
     #print(Path(__file__))
     #print(_get_data_available())
-    #DataLoader.available_datasets()
-    DataLoader().help()
-    wu_dataloader = DataLoader.fetch_data("wu_group", subset_filter="GBM")
-    print(wu_dataloader.get_data_summary())
-    print(wu_dataloader.get_group_info())
-    DataLoader().available_datasets()
+    DataLoader.available_datasets()
+    #DataLoader().help()
+    #wu_dataloader = DataLoader.fetch_data("wu_group", subset_filter="GBM")
+    #print(wu_dataloader.get_data_summary())
+    #print(wu_dataloader.get_group_info())
+    #DataLoader().available_datasets()
 
     # must raise ValueError!
-    DataLoader().get_data_summary()
+   # DataLoader().get_data_summary()
