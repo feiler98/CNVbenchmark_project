@@ -54,7 +54,8 @@ class Foundation:
         print("""
 ------------------------------
 | Available callable methods |
-------------------------------""")
+------------------------------
+""")
         for items in method_list:
             if not items[0].startswith('_'):
                 string_description = str(items[1]).replace("<", "").split(" ")[0]

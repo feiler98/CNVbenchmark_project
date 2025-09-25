@@ -10,7 +10,7 @@
 # import cnv_benchmark  --> call like folder
 
 [project]
-name = "benchInferCNV"
+name = "cnv_benchmark"
 version = "0.1"
 authors = [
            {name="Werner Feiler", email="werner.feiler@ukmuenster.de"},

@@ -1,0 +1,38 @@
+##################
+#   QUICKSTART   #
+##################
+
+Welcome to the cnv_benchmark project!
+The following lists a few important functionalities of this
+package to get you started.
+
+General Information
+###################
+
+# import cnv_benchmark as cnvb
+cnvb.__version__
+
+
+
+The DataLoader
+##############
+
+# import
+from cnv_benchmark import DataLoader
+
+# Q: But what do we do now?
+# A: Maybe ask for help?
+
+# --> get an overview of all the Classes methods available
+Dataloader().help()
+
+# the "classmethod" is used for the initialization of the Class
+
+# We can however get an overview of all available datasets with the following
+Dataloader.available_datasets()
+
+# then choose a dataset and initialize the Class
+dataset = Dataloader.fetch_data("group_dataset")
+
+# now you can use the other methods to get the information about the data and/or load the data as pathlib.Path or as pd.Dataframe
+# this is packaged as a dictionary for clarity and a structured handling of information
