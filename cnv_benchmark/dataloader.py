@@ -140,7 +140,7 @@ class DataLoader(Foundation):
             # header styling
             print(f"""
     > {key}""")
-            print("    " + "-" * len(key))
+            print("    " + "-" * (len(key)+2))
 
             # generate the subdict information, just get the first row of the dataframe for faster loading times
             for data_key, data_info in subdict.items():
@@ -292,7 +292,7 @@ Group is not known, please refer to the currently available groups listed below:
 if __name__ == "__main__":
     #print(Path(__file__))
     #print(_get_data_available())
-    DataLoader.available_datasets()
+    # DataLoader.available_datasets()
     #DataLoader().help()
     #wu_dataloader = DataLoader.fetch_data("wu_group", subset_filter="GBM")
     #print(wu_dataloader.get_data_summary())
@@ -300,4 +300,4 @@ if __name__ == "__main__":
     #DataLoader().available_datasets()
 
     # must raise ValueError!
-   # DataLoader().get_data_summary()
+    # DataLoader().get_data_summary()

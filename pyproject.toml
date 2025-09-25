@@ -1,0 +1,29 @@
+###############################################
+#    CNVbenchmark_project .toml setup file    #
+###############################################
+
+# youtube quick intro
+# src: https://www.youtube.com/watch?v=QMY-OkckDwo
+
+# local installation:
+# pip install -e .
+# import cnv_benchmark  --> call like folder
+
+[project]
+name = "benchInferCNV"
+version = "0.1"
+authors = [
+           {name="Werner Feiler", email="werner.feiler@ukmuenster.de"},
+           {name="Kornelius Kerl", email="kornelius.kerl@ukmuenster.de"},
+           {name="Christian Thomas", email="christian.thomas@ukmuenster.de"}
+           ]
+dynamic = ["dependencies"]
+description = "Benchmark utility | pipeline for benchmarking selected state-of-the-art InferCNV-methods using multiomics-data. Property of AG Kerl"
+readme = "README.md"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
