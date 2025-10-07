@@ -1,9 +1,10 @@
-pandas
+pandas~=2.3.1
 numpy
 matplotlib
 seaborn
-pathlib
-pyomics
+pathlib~=1.0.1
+pyomics~=0.1
 rpy2
-anndata
+anndata~=0.12.2
 scanpy
+infercnvpy~=0.6.0
