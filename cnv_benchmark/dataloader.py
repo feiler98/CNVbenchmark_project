@@ -420,6 +420,7 @@ at the available data with FACSplus().available_datasets()""")
         else:
             raise ValueError("Datatype is not valid. Please provide a path or DataFrame.")
 
+        # returns the Multiomics DataFrame dataset and the accepted FACS-data if there were any hits by genomic assembly
         return cls(df_mult=df_mult, facs_path_dict=dict_accepted_facs)
 
 
