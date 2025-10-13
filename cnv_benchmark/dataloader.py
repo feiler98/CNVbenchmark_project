@@ -20,10 +20,17 @@ from ._utility._classes import Foundation
 import re
 # ______________________________________________________________________________________________________________________
 
-def _get_data_available() -> dict:
+def _get_data_available(section: str, dict_repair_dataloader_data: dict) -> dict:
     """
     Algorithm which checks and generates a dictionary of available data based on the dataloader.ini configuration-file
     section 'data'.
+
+    Parameters
+    ----------
+    section: str
+        Name of the target section within the config-file.
+    dict_repair_dataloader_data: dict
+        Standard parameter dictionary of the config-file section.
 
     Returns
     -------
@@ -40,12 +47,7 @@ def _get_data_available() -> dict:
     cfg_obj = pyomics.GetConfig.get_config(str(path_cfg))
 
     # repair the data section with these standard parameters if necessary
-    dict_repair_dataloader_data = {
-          "data_loc": str(Path(__file__).parent),
-          "requires": str(['GBC', 'RCM']),
-          "facs": "FACS"
-    }
-    dict_data = cfg_obj.get_repair_config_section("data", dict_repair_dataloader_data)
+    dict_data = cfg_obj.get_repair_config_section(section, dict_repair_dataloader_data)
 
     # check and collect the available information about the config-set directory
     path_data = Path(dict_data["data_loc"]).resolve()
@@ -89,6 +91,16 @@ def _get_data_available() -> dict:
     return dict_data_overview
 
 
+dict_data_section = {
+                     "data_loc": str(Path(__file__).parent),
+                     "requires": str(['GBC', 'RCM']),
+                     "facs": "FACS"
+                    }
+
+
+# Multiomics Data
+# ----------------------------------------------------------------------------------------------------------------------
+
 class DataLoader(Foundation):
     """
     Handling of the data access for the benchmarking. Dependent on the given dataloader.ini configuration file.
@@ -102,7 +114,7 @@ class DataLoader(Foundation):
     """
 
     # full dictionary with all available data
-    _dict_available_data = _get_data_available()
+    _dict_available_data = _get_data_available("data", dict_data_section)
 
     def __init__(self, fetched_group_dict_data: dict = None, selected_group: str = None):
         super().__init__()
@@ -147,8 +159,10 @@ class DataLoader(Foundation):
                 count_cells_sample = len(
                     pd.read_csv(str(data_info["RCM"]), index_col="Gene", nrows=0).columns)
                 list_count_cells.append(count_cells_sample)
+                assembly_genome = str(data_info["RCM"].stem).split(sep="__")[1]
                 print(f"""        > {data_key}
-           available cells | {count_cells_sample}""")
+           available cells | {count_cells_sample}
+           assembly genome | {assembly_genome}""")
 
         sum_string = f"cells total     | {sum(list_count_cells)}"
         print("\n           " + "-" * len(sum_string))
@@ -285,6 +299,128 @@ Group is not known, please refer to the currently available groups listed below:
             print(f"Available_dataset file for {self.selected_group} is not available.")
             return None
     ####################################################################################################################
+
+
+# FACS Data
+# ----------------------------------------------------------------------------------------------------------------------
+
+dict_repair_facs_data = {
+      "data_loc": str(Path(__file__).parent),
+      "requires": str(['RCM']),
+}
+
+class FACSplus(Foundation):
+    # full dictionary with all available data
+    _dict_available_data = _get_data_available("facs_data", dict_repair_facs_data)
+
+    def __init__(self, df_mult: pd.DataFrame = None, facs_path_dict: dict = None):
+        super().__init__()
+        self.df_mult = df_mult
+        self.facs_path_dict = facs_path_dict
+        self.class_obj = FACSplus
+        self.error_text = """
+        #################################################
+        Class has not been initialized!
+        Use FACSplus.fetch_matching_data(group_data: str) first.
+        #################################################
+        """
+
+    # General check methods before initialization
+    # -------------------------------------------
+    @staticmethod
+    def available_datasets(ref_genome: str = None, return_true: bool = False) -> dict:
+        """
+        Prints a list of available datasets as overview.
+
+        Returns
+        -------
+        dict
+            Dictionary with all groups and their data path; can be filtered by ref_genome.
+        """
+
+        # box in the information for terminal display
+        print("""
+
+=====================================
+       // Available Datasets
+-------------------------------------""")
+
+        list_count_cells = []
+        dict_group = {}
+        for key, subdict in FACSplus._dict_available_data.items():
+            # header styling
+            print(f"""
+    > {key}""")
+            print("    " + "-" * (len(key) + 2))
+
+            # generate the subdict information, just get the first row of the dataframe for faster loading times
+            dict_accepted = {}
+            for data_key, data_info in subdict.items():
+                count_cells_sample = len(
+                    pd.read_csv(str(data_info["RCM"]), index_col="Gene", nrows=0).columns)
+                assembly_genome = str(data_info["RCM"].stem).split(sep="__")[1]
+                if assembly_genome == ref_genome or ref_genome is None:
+                    dict_accepted.update({data_key: data_info})
+                    list_count_cells.append(count_cells_sample)
+                    print(f"""        > {data_key}
+               available cells | {count_cells_sample}
+               assembly genome | {assembly_genome}""")
+            if len(dict_accepted) == 0:
+                print(f"""        > no matching data""")
+            else:
+                dict_group.update({key: dict_accepted})
+
+        sum_string = f"cells total     | {sum(list_count_cells)}"
+        print("\n           " + "-" * len(sum_string))
+        print(f"""           {sum_string}
+=====================================
+""")
+        if return_true:
+            return dict_group
+
+    # Initialization of the facs expansion
+    ####################################################################################################################
+    @classmethod
+    def fetch_facs_expansion(cls, mult_data: (Path, str, pd.DataFrame), assembly_genome: str = None):
+        """
+
+        Parameters
+        ----------
+        mult_data: posixpath, str, pd.DataFrame
+        assembly_genome: str
+        """
+
+        if isinstance(mult_data, (Path, str)):
+            import_path = Path(mult_data)
+            if not import_path.is_file() and str(import_path).endswith((".csv", ".xlsx")):
+                raise ValueError(f"{import_path} is not a valid file! Only csv- or excel-files are accepted.")
+            # check assembly_genome
+            if assembly_genome is None:
+                assembly_genome = import_path.stem.split(sep="__")[1]
+            dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
+            if len(dict_accepted_facs) == 0:
+                raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
+            df_import = pd.read_csv(import_path)
+            if "Gene" not in df_import.columns:
+                df_mult = df_import.T.set_index("Gene")
+            else:
+                df_mult = df_import.set_index("Gene")
+
+        elif isinstance(mult_data, pd.DataFrame):
+            # check assembly_genome
+            if not isinstance(assembly_genome, str):
+                raise ValueError("""Please provide a assembly genome to the DataFrame. For orientation please look
+at the available data with FACSplus().available_datasets()""")
+            dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
+            if len(dict_accepted_facs) == 0:
+                raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
+            if not mult_data.index.name == "Gene":
+                raise ValueError("Index is not 'Gene'!")
+            df_mult = mult_data
+        else:
+            raise ValueError("Datatype is not valid. Please provide a path or DataFrame.")
+
+        return cls(df_mult=df_mult, facs_path_dict=dict_accepted_facs)
 
 
 # debugging
