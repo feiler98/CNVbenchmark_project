@@ -15,91 +15,19 @@ Configuration file [dataloader.ini] handles the location of the benchmarking dat
 import pandas as pd
 from pathlib import Path
 import pyomics
-import ast
 from ._utility._classes import Foundation
-import re
+from ._utility.dataloader_utility import _get_data_available, query_dataset
 # ______________________________________________________________________________________________________________________
 
-def _get_data_available(section: str, dict_repair_dataloader_data: dict) -> dict:
-    """
-    Algorithm which checks and generates a dictionary of available data based on the dataloader.ini configuration-file
-    section 'data'.
 
-    Parameters
-    ----------
-    section: str
-        Name of the target section within the config-file.
-    dict_repair_dataloader_data: dict
-        Standard parameter dictionary of the config-file section.
-
-    Returns
-    -------
-    dict
-        Dictionary with available multiomic datasets for every group.
-    """
-
-    path_cfg = Path(__file__).parent / "config" / "dataloader.ini"
-    if not path_cfg.exists():
-        print("Configuration file 'dataloader.ini' does not exist; Creating file...")
-        path_cfg.touch()  # create configuration-file if it does not exist
-
-    # configuration file Object for handling the data
-    cfg_obj = pyomics.GetConfig.get_config(str(path_cfg))
-
-    # repair the data section with these standard parameters if necessary
-    dict_data = cfg_obj.get_repair_config_section(section, dict_repair_dataloader_data)
-
-    # check and collect the available information about the config-set directory
-    path_data = Path(dict_data["data_loc"]).resolve()
-    # Error 1: directory does not exist
-    if not path_data.exists():
-        raise ValueError(f"Path {path_data} does not exist!")
-
-    # get a dictionary with the directory names and paths --> the directory name will be the listed dataset name!
-    dict_data_dir = {p.name: p for p in path_data.iterdir() if p.is_dir()}
-
-    # Error 2: no dir in parent dir
-    if len(dict_data_dir) < 1:
-        raise ValueError(f"{path_data} does not contain any directories. Please recheck that the set 'data_loc' path contains")
-
-    # structure for checking the available datasets:
-    # ----------------------------------------------
-    # priority: the DNA and RNA files are present, all other information regarding overview and facs data are optional
-    dict_data_overview = {}
-    requires_list =  ast.literal_eval(dict_data["requires"])
-    for data_name, p in dict_data_dir.items():
-        dict_available_genomic_files = {p_csv.stem: p_csv for p_csv in p.glob("*.csv")} # get list of all csv file paths --> standard format of count matrices
-        set_data_tags = set([p.stem.split(sep="__")[0] for p in list(dict_available_genomic_files.values())])  # get unique dataset identifier tag
-        dict_accepted = {}
-        for tags in set_data_tags:
-            flag_keep = True  # keep the dataset or remove it
-            dict_paths_files = {}
-            for data_type in requires_list:  # must contain all required data files
-
-                # Regular Expression for taking the chromosome into account; .group() for getting result as string!
-                list_keys = list(dict_available_genomic_files.keys())
-                re_tag = f"{tags}__[a-zA-Z]+_[0-9]+__{data_type}"
-                list_match = [re.match(re_tag, item).group() for item in list_keys if re.match(re_tag, item) is not None]
-                if len(list_match) > 0:
-                    dict_paths_files[data_type] = dict_available_genomic_files[list_match[0]]
-                else:
-                    flag_keep = False
-            if flag_keep:
-                dict_accepted[tags] = dict_paths_files
-        if len(dict_accepted) > 0:  # in order to keep a "lab group", must at least contain 1 dataset
-            dict_data_overview[data_name] = dict_accepted
-    return dict_data_overview
-
+# Multiomics Data
+# ----------------------------------------------------------------------------------------------------------------------
 
 dict_data_section = {
                      "data_loc": str(Path(__file__).parent),
                      "requires": str(['GBC', 'RCM']),
                      "facs": "FACS"
                     }
-
-
-# Multiomics Data
-# ----------------------------------------------------------------------------------------------------------------------
 
 class DataLoader(Foundation):
     """
@@ -143,9 +71,9 @@ class DataLoader(Foundation):
         # box in the information for terminal display
         print("""
 
-=====================================
-       // Available Datasets
--------------------------------------""")
+========================================
+         // Available Datasets
+----------------------------------------""")
 
         list_count_cells = []
         for key, subdict in DataLoader._dict_available_data.items():
@@ -167,7 +95,7 @@ class DataLoader(Foundation):
         sum_string = f"cells total     | {sum(list_count_cells)}"
         print("\n           " + "-" * len(sum_string))
         print(f"""           {sum_string}
-=====================================
+========================================
 """)
 
 
@@ -328,7 +256,7 @@ class FACSplus(Foundation):
     # General check methods before initialization
     # -------------------------------------------
     @staticmethod
-    def available_datasets(ref_genome: str = None, return_true: bool = False) -> dict:
+    def available_datasets(ref_genome: str = None, return_true: bool = False) -> (dict, None):
         """
         Prints a list of available datasets as overview.
 
@@ -341,9 +269,9 @@ class FACSplus(Foundation):
         # box in the information for terminal display
         print("""
 
-=====================================
-       // Available Datasets
--------------------------------------""")
+========================================
+      // FACS | Available Datasets
+----------------------------------------""")
 
         list_count_cells = []
         dict_group = {}
@@ -373,10 +301,11 @@ class FACSplus(Foundation):
         sum_string = f"cells total     | {sum(list_count_cells)}"
         print("\n           " + "-" * len(sum_string))
         print(f"""           {sum_string}
-=====================================
+========================================
 """)
         if return_true:
             return dict_group
+        return None
 
     # Initialization of the facs expansion
     ####################################################################################################################
@@ -386,7 +315,7 @@ class FACSplus(Foundation):
 
         Parameters
         ----------
-        mult_data: posixpath, str, pd.DataFrame
+        mult_data: PosixPath, str, pd.DataFrame
         assembly_genome: str
         """
 
