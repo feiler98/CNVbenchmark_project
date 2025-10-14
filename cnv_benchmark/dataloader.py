@@ -44,7 +44,9 @@ class DataLoader(Foundation):
     # full dictionary with all available data
     _dict_available_data = _get_data_available("data", dict_data_section)
 
-    def __init__(self, fetched_group_dict_data: dict = None, selected_group: str = None):
+    def __init__(self,
+                 fetched_group_dict_data: dict = None,
+                 selected_group: str = None):
         super().__init__()
         self.fetched_group_dict_data = fetched_group_dict_data
         self.selected_group = selected_group
@@ -241,9 +243,13 @@ class FACSplus(Foundation):
     # full dictionary with all available data
     _dict_available_data = _get_data_available("facs_data", dict_repair_facs_data)
 
-    def __init__(self, df_mult: pd.DataFrame = None, facs_path_dict: dict = None):
+    def __init__(self,
+                 df_rcm: pd.DataFrame = None,
+                 df_gbc: pd.DataFrame = None,
+                 facs_path_dict: dict = None):
         super().__init__()
-        self.df_mult = df_mult
+        self.df_rcm = df_rcm
+        self.df_gbc = df_gbc
         self.facs_path_dict = facs_path_dict
         self.class_obj = FACSplus
         self.error_text = """
@@ -310,61 +316,91 @@ class FACSplus(Foundation):
     # Initialization of the facs expansion
     ####################################################################################################################
     @classmethod
-    def fetch_facs_expansion(cls, mult_data: (Path, str, pd.DataFrame), assembly_genome: str = None):
+    def fetch_facs_expansion(cls, rcm_data: (Path, str, pd.DataFrame), gbc_data: (Path, str, pd.DataFrame),  assembly_genome: str = None):
         """
 
         Parameters
         ----------
-        mult_data: PosixPath, str, pd.DataFrame
+        rcm_data: PosixPath, str, pd.DataFrame
+        gbc_data: PosixPath, str, pd.DataFrame
         assembly_genome: str
         """
+        # check both rcm and gbc
+        dict_data_check = {
+            "rcm": {"data":rcm_data, "col_req":["Gene"], "df": None},
+            "gbc": {"data": gbc_data, "col_req": ["CHR", "START", "END"], "df": None},
+        }
+        dict_accepted_facs = None
 
-        if isinstance(mult_data, (Path, str)):
-            import_path = Path(mult_data)
-            if not import_path.is_file() and str(import_path).endswith((".csv", ".xlsx")):
-                raise ValueError(f"{import_path} is not a valid file! Only csv- or excel-files are accepted.")
-            # check assembly_genome
-            if assembly_genome is None:
-                assembly_genome = import_path.stem.split(sep="__")[1]
-            dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
-            if len(dict_accepted_facs) == 0:
-                raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
-            df_import = pd.read_csv(import_path)
-            if "Gene" not in df_import.columns:
-                df_mult = df_import.T.set_index("Gene")
+
+        def check_contains_list(list_query: list, list_search) -> bool:
+            bool_return = True
+            for items in list_query:
+                if not items in list_search:
+                    bool_return = False
+            return bool_return
+
+        for datatype, subdict in dict_data_check:
+            if isinstance(subdict["data"], (Path, str)):
+                import_path = Path(subdict["data"])
+                if not import_path.is_file() and str(import_path).endswith((".csv", ".xlsx")):
+                    raise ValueError(f"{import_path} is not a valid file! Only csv- or excel-files are accepted.")
+                # check assembly_genome
+                if assembly_genome is None:
+                    assembly_genome = import_path.stem.split(sep="__")[1]
+                dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
+                if len(dict_accepted_facs) == 0:
+                    raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
+                df_import = pd.read_csv(import_path)
+                bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_import.columns))
+                if not bool_all_col_contained:
+                    df_import = df_import.T
+                    bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_import.columns))
+                if not bool_all_col_contained:
+                    raise ValueError(f"Required columns {subdict["col_required"]} are not in the {datatype}-file!")
+                dict_data_check["datatype"].update({"df":df_import.set_index(subdict["col_required"][0])})
+
+            elif isinstance(subdict["data"], pd.DataFrame):
+                # check assembly_genome
+                if not isinstance(assembly_genome, str):
+                    raise ValueError("""Please provide a assembly genome to the DataFrame. For orientation please look
+    at the available data with FACSplus().available_datasets()""")
+                dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
+                if len(dict_accepted_facs) == 0:
+                    raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
+                df_idx_reset = subdict["data"].reset_index().drop("index", axis=1, errors="ignore")
+                bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_idx_reset.columns))
+                if not bool_all_col_contained:
+                    df_idx_reset = df_idx_reset.T
+                    bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_idx_reset.columns))
+                if not bool_all_col_contained:
+                    raise ValueError(f"Required columns {subdict["col_required"]} are not in the {datatype}-file!")
+                dict_data_check["datatype"].update({"df": df_idx_reset.set_index(subdict["col_required"][0])})
             else:
-                df_mult = df_import.set_index("Gene")
-
-        elif isinstance(mult_data, pd.DataFrame):
-            # check assembly_genome
-            if not isinstance(assembly_genome, str):
-                raise ValueError("""Please provide a assembly genome to the DataFrame. For orientation please look
-at the available data with FACSplus().available_datasets()""")
-            dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
-            if len(dict_accepted_facs) == 0:
-                raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
-            if not mult_data.index.name == "Gene":
-                raise ValueError("Index is not 'Gene'!")
-            df_mult = mult_data
-        else:
-            raise ValueError("Datatype is not valid. Please provide a path or DataFrame.")
+                raise ValueError("Datatype is not valid. Please provide a path or DataFrame.")
 
         # returns the Multiomics DataFrame dataset and the accepted FACS-data if there were any hits by genomic assembly
-        return cls(df_mult=df_mult, facs_path_dict=dict_accepted_facs)
+        return cls(df_rcm=dict_data_check["rcm"]["df"], df_gbc=dict_data_check["gbc"]["df"], facs_path_dict=dict_accepted_facs)
 
+    # post-initialization
+    # -------------------
+    def dataloader_extend_facs_hybrid(self,
+                                      dataset_name: str = None,
+                                      query_facs_data: (str, None) = None,
+                                      is_facs_percent: (float, None) = None,
+                                      top_features: (int, None) = 5000):
+        """
+        Parameters
+        ----------
+        dataset_name: str
+        query_facs_data: str, None
+        is_facs_percent: float, None
+        top_features: int, None
+        """
+        pass
+    ####################################################################################################################
 
 # debugging
 # ---------
 if __name__ == "__main__":
     pass
-    # print(Path(__file__))
-    # print(_get_data_available())
-    # DataLoader.available_datasets()
-    # DataLoader().help()
-    # wu_dataloader = DataLoader.fetch_data("wu_group", subset_filter="GBM")
-    # print(wu_dataloader.get_data_summary())
-    # print(wu_dataloader.get_group_info())
-    # DataLoader().available_datasets()
-
-    # must raise ValueError!
-    # DataLoader().get_data_summary()
