@@ -340,7 +340,7 @@ class FACSplus(Foundation):
                     bool_return = False
             return bool_return
 
-        for datatype, subdict in dict_data_check:
+        for datatype, subdict in dict_data_check.items():
             if isinstance(subdict["data"], (Path, str)):
                 import_path = Path(subdict["data"])
                 if not import_path.is_file() and str(import_path).endswith((".csv", ".xlsx")):
@@ -348,36 +348,33 @@ class FACSplus(Foundation):
                 # check assembly_genome
                 if assembly_genome is None:
                     assembly_genome = import_path.stem.split(sep="__")[1]
-                dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
-                if len(dict_accepted_facs) == 0:
-                    raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
                 df_import = pd.read_csv(import_path)
-                bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_import.columns))
+                bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_import.columns))
                 if not bool_all_col_contained:
                     df_import = df_import.T
-                    bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_import.columns))
+                    bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_import.columns))
                 if not bool_all_col_contained:
-                    raise ValueError(f"Required columns {subdict["col_required"]} are not in the {datatype}-file!")
-                dict_data_check["datatype"].update({"df":df_import.set_index(subdict["col_required"][0])})
+                    raise ValueError(f"Required columns {subdict["col_req"]} are not in the {datatype}-file!")
+                dict_data_check[datatype].update({"df":df_import.set_index(subdict["col_req"][0])})
 
             elif isinstance(subdict["data"], pd.DataFrame):
                 # check assembly_genome
                 if not isinstance(assembly_genome, str):
                     raise ValueError("""Please provide a assembly genome to the DataFrame. For orientation please look
     at the available data with FACSplus().available_datasets()""")
-                dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
-                if len(dict_accepted_facs) == 0:
-                    raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
                 df_idx_reset = subdict["data"].reset_index().drop("index", axis=1, errors="ignore")
-                bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_idx_reset.columns))
+                bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_idx_reset.columns))
                 if not bool_all_col_contained:
                     df_idx_reset = df_idx_reset.T
-                    bool_all_col_contained = check_contains_list(subdict["col_required"], list(df_idx_reset.columns))
+                    bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_idx_reset.columns))
                 if not bool_all_col_contained:
-                    raise ValueError(f"Required columns {subdict["col_required"]} are not in the {datatype}-file!")
-                dict_data_check["datatype"].update({"df": df_idx_reset.set_index(subdict["col_required"][0])})
+                    raise ValueError(f"Required columns {subdict["col_req"]} are not in the {datatype}-file!")
+                dict_data_check[datatype].update({"df": df_idx_reset.set_index(subdict["col_req"][0])})
             else:
                 raise ValueError("Datatype is not valid. Please provide a path or DataFrame.")
+        dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
+        if len(dict_accepted_facs) == 0:
+            raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
 
         # returns the Multiomics DataFrame dataset and the accepted FACS-data if there were any hits by genomic assembly
         return cls(df_rcm=dict_data_check["rcm"]["df"], df_gbc=dict_data_check["gbc"]["df"], facs_path_dict=dict_accepted_facs)
@@ -385,7 +382,7 @@ class FACSplus(Foundation):
     # post-initialization
     # -------------------
     def dataloader_extend_facs_hybrid(self,
-                                      dataset_name: str = None,
+                                      dataset_name: str,
                                       query_facs_data: (str, None) = None,
                                       is_facs_percent: (float, None) = None,
                                       top_features: (int, None) = 5000):

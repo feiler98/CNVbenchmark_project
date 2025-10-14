@@ -38,7 +38,7 @@ def _get_data_available(section: str, dict_repair_dataloader_data: dict) -> dict
         Dictionary with available multiomic datasets for every group.
     """
 
-    path_cfg = Path(__file__).parent / "config" / "dataloader.ini"
+    path_cfg = Path(__file__).parent.parent / "config" / "dataloader.ini"
     if not path_cfg.exists():
         print("Configuration file 'dataloader.ini' does not exist; Creating file...")
         path_cfg.touch()  # create configuration-file if it does not exist
