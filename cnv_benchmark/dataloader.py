@@ -16,7 +16,7 @@ import pandas as pd
 from pathlib import Path
 import pyomics
 from ._utility._classes import Foundation
-from ._utility.dataloader_utility import _get_data_available, query_dataset
+from ._utility.dataloader_utility import _get_data_available, query_dataset, best_match
 # ______________________________________________________________________________________________________________________
 
 
@@ -126,15 +126,9 @@ class DataLoader(Foundation):
         # list of all available group directories which meet the data criteria defined in
         # dataloader._get_data_available()
         list_groups = list(DataLoader._dict_available_data.keys())
+        group_data = best_match(group_data, list_groups)
 
-        # check if selected group exists
-        if group_data not in list_groups:
-            string_groups = "\n    > ".join(list_groups)
-            raise ValueError(f"""
-Group is not known, please refer to the currently available groups listed below:
-    > {string_groups}
-            """)
-
+        # get all subsets of the group
         dict_subset_group = DataLoader._dict_available_data[group_data]
 
         # check subset_filter
