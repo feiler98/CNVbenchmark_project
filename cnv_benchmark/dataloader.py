@@ -378,16 +378,28 @@ class FACSplus(Foundation):
     def dataloader_extend_facs_hybrid(self,
                                       dataset_name: str,
                                       query_facs_data: (str, None) = None,
-                                      is_facs_percent: (float, None) = None,
-                                      top_features: (int, None) = 5000):
+                                      is_facs_percent: (float, None) = None):
         """
+        Expand the multiomics datasets provided by the dataloader with FACS-data.
+        Integrates selected transcriptomic-data with the scverse-platform and saves the GBC- and RCM-files in a new
+        folder within the dataloader directory (set in section data in the dataloader.ini).
+
         Parameters
         ----------
         dataset_name: str
+            Name of the generated FACS multiomics hybrid dataset.
         query_facs_data: str, None
+            Name of FACS data (pre-filtered by assembly genome) which fits the query by similarity score.
+            If 'None', will take the whole FACS-data pool.
+            Structure: group_name;data_name
+                       if group_name is left empty -> all groups are searched
+                       if data_name is left empty -> all datasets for group are incorporated
         is_facs_percent: float, None
-        top_features: int, None
+            Relative percentage of the multiomics dataset as additional FACS data (randomly picked cell entities).
+            Range minimum is 0 (though that would be silly to select) to max cells of the FACS data.
+            1 is equal to 100% of the multiomics cell-count if available.
         """
+
         pass
     ####################################################################################################################
 
