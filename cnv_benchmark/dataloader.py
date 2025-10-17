@@ -310,68 +310,41 @@ class FACSplus(Foundation):
     # Initialization of the facs expansion
     ####################################################################################################################
     @classmethod
-    def fetch_facs_expansion(cls, rcm_data: (Path, str, pd.DataFrame), gbc_data: (Path, str, pd.DataFrame),  assembly_genome: str = None):
+    def fetch_facs_expansion(cls, dataloader_dict: dict, add_tag: str = None):
         """
 
         Parameters
         ----------
-        rcm_data: PosixPath, str, pd.DataFrame
-        gbc_data: PosixPath, str, pd.DataFrame
-        assembly_genome: str
+        dataloader_dict: dict
+            Dictionary of paths containing both GBC and RCM data
         """
-        # check both rcm and gbc
-        dict_data_check = {
-            "rcm": {"data":rcm_data, "col_req":["Gene"], "df": None},
-            "gbc": {"data": gbc_data, "col_req": ["CHR", "START", "END"], "df": None},
-        }
-        dict_accepted_facs = None
 
-
-        def check_contains_list(list_query: list, list_search) -> bool:
-            bool_return = True
-            for items in list_query:
-                if not items in list_search:
-                    bool_return = False
-            return bool_return
-
-        for datatype, subdict in dict_data_check.items():
-            if isinstance(subdict["data"], (Path, str)):
-                import_path = Path(subdict["data"])
-                if not import_path.is_file() and str(import_path).endswith((".csv", ".xlsx")):
-                    raise ValueError(f"{import_path} is not a valid file! Only csv- or excel-files are accepted.")
-                # check assembly_genome
-                if assembly_genome is None:
-                    assembly_genome = import_path.stem.split(sep="__")[1]
-                df_import = pd.read_csv(import_path)
-                bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_import.columns))
-                if not bool_all_col_contained:
-                    df_import = df_import.T
-                    bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_import.columns))
-                if not bool_all_col_contained:
-                    raise ValueError(f"Required columns {subdict["col_req"]} are not in the {datatype}-file!")
-                dict_data_check[datatype].update({"df":df_import.set_index(subdict["col_req"][0])})
-
-            elif isinstance(subdict["data"], pd.DataFrame):
-                # check assembly_genome
-                if not isinstance(assembly_genome, str):
-                    raise ValueError("""Please provide a assembly genome to the DataFrame. For orientation please look
-    at the available data with FACSplus().available_datasets()""")
-                df_idx_reset = subdict["data"].reset_index().drop("index", axis=1, errors="ignore")
-                bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_idx_reset.columns))
-                if not bool_all_col_contained:
-                    df_idx_reset = df_idx_reset.T
-                    bool_all_col_contained = check_contains_list(subdict["col_req"], list(df_idx_reset.columns))
-                if not bool_all_col_contained:
-                    raise ValueError(f"Required columns {subdict["col_req"]} are not in the {datatype}-file!")
-                dict_data_check[datatype].update({"df": df_idx_reset.set_index(subdict["col_req"][0])})
+        # validation and transformation of dataloader dict
+        identifier_tag = ""
+        dict_validated_rcm = {}
+        dict_validated_gbc = {}
+        set_genome = None
+        for sample, dict_gbc_rcm in dataloader_dict.items():  # make a general function out of this and use for facs too
+            if not isinstance(dict_gbc_rcm, dict):
+                raise ValueError(f"Value of dataloader_dict['{sample}'] must be opf type dict!")
+            list_assembly_genome_verify = []
+            for req_key in ["RCM", "GBC"]:
+                if req_key not in dict_gbc_rcm.keys():
+                    raise ValueError(f"'RCM' and 'GBC' must be in dict of dataloader_dict['{sample}']!")
+                list_assembly_genome_verify.append(Path(dict_gbc_rcm[req_key]).stem.split("__")[1])
+            if len(set(list_assembly_genome_verify)) > 1:
+                raise ValueError(f"Genomic Assemblies for RCM and GBC are inconsistent for {sample}!")
+            if set_genome is None:
+                set_genome = list_assembly_genome_verify[0]
             else:
-                raise ValueError("Datatype is not valid. Please provide a path or DataFrame.")
-        dict_accepted_facs = FACSplus.available_datasets(assembly_genome, True)
-        if len(dict_accepted_facs) == 0:
-            raise ValueError("No match by assembly genome [file naming convention] was found for the data!")
+                if set_genome == list_assembly_genome_verify[0]:
+                    if add_tag is not None:
+                        identifier_tag = f"__{add_tag}"
+                    dict_validated_rcm.update({f"{sample}{identifier_tag}": dict_gbc_rcm["RCM"]})
+                    dict_validated_gbc.update({f"{sample}{identifier_tag}": dict_gbc_rcm["GBC"]})
+        dict_valid_facs = FACSplus.available_datasets(ref_genome=set_genome, return_true=True)
 
-        # returns the Multiomics DataFrame dataset and the accepted FACS-data if there were any hits by genomic assembly
-        return cls(df_rcm=dict_data_check["rcm"]["df"], df_gbc=dict_data_check["gbc"]["df"], facs_path_dict=dict_accepted_facs)
+
 
     # post-initialization
     # -------------------
