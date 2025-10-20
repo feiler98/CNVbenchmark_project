@@ -91,7 +91,7 @@ def _get_data_available(section: str, dict_repair_dataloader_data: dict) -> dict
     return dict_data_overview
 
 
-def best_match(query: str, search_list: list) -> str:
+def best_match(query: str, search_list: list, mult_match: bool = False) -> (str, list, None):
     """
     Matching a query to a list of strings. Returns the best match.
     Raises an error if too ambigious and multiple have the same score.
@@ -102,21 +102,30 @@ def best_match(query: str, search_list: list) -> str:
         The query the list of sequences should be checked for maximized match.
     search_list: list
         List of strings which are searched.
-
+    mult_match: bool
+        Enables multiple matches; returns all items with max score.
     Returns
     -------
-    str
-        The best match.
+    str, list, None
+        The best match or multiple matches if mult_match is True
     """
+
     aligner = Align.PairwiseAligner(match_score=1.0)
     aligner.mode = "local"
     aligner.open_gap_score = -1
     aligner.extend_gap_score = 0
     list_scores = [aligner.score(str(target), query) for target in search_list]
-    if list_scores.count(max(list_scores)) > 1:
-        raise ValueError("Match of query is too ambigious. Please be more precise with your query!")
-    # get best score
-    return search_list[list_scores.index(max(list_scores))]
+    if not mult_match:
+        if list_scores.count(max(list_scores)) > 1:
+            raise ValueError("Match of query is too ambigious. Please be more precise with your query!")
+        hit = search_list[list_scores.index(max(list_scores))]
+    else:
+        if max(list_scores) > 0:
+            scores_idx = [i for i, x in enumerate(list_scores) if x == max(list_scores)]
+            hit = [search_list[idx] for idx in scores_idx]
+        else:
+            hit = None
+    return hit
 
 
 def query_dataset(query: str, data_path_dict: dict) -> Path:

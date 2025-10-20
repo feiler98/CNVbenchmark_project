@@ -233,18 +233,70 @@ dict_repair_facs_data = {
       "requires": str(['RCM']),
 }
 
+
+def _validate_data_dict(input_dict: dict, req_keys_subdict: list, add_tag: str = None) -> tuple:
+    """
+    Turns nested dictionary structure in 1D dictionary
+
+    Parameters
+    ----------
+    input_dict: dict
+        Nested dictionary of data, transformation of established data structure for dataloader.py
+    req_keys_subdict: list
+        List of required keys of subdicts.
+    add_tag: str
+        Extra string-tag for the data.
+
+    Returns
+    -------
+    dict
+        1D dictionary.
+    """
+
+    # validation and transformation of dataloader dict
+    if add_tag is None:
+        add_tag = ""
+    else:
+        add_tag = f"__{add_tag}"
+    dict_validated = {req_key:{} for req_key in req_keys_subdict}
+    set_genome = None
+    for sample, subdict in input_dict.items():  # make a general function out of this and use for facs too
+        if not isinstance(subdict, dict):
+            raise ValueError(f"Value of dataloader_dict['{sample}'] must be opf type dict!")
+        list_assembly_genome_verify = []
+        for req_key in req_keys_subdict:
+            if req_key not in subdict.keys():
+                raise ValueError(f"{str(*req_keys_subdict)} must be in '{sample}' dict!")
+            list_assembly_genome_verify.append(Path(subdict[req_key]).stem.split("__")[1])
+        if len(set(list_assembly_genome_verify)) > 1:
+            raise ValueError(f"Genomic Assemblies for RCM and GBC are inconsistent for {sample}!")
+        if set_genome is None:
+            set_genome = list_assembly_genome_verify[0]
+            for req_key in req_keys_subdict:
+                dict_validated[req_key].update({f"{sample}{add_tag}": subdict[req_key]})
+        else:
+            if set_genome == list_assembly_genome_verify[0]:
+                for req_key in req_keys_subdict:
+                    dict_validated[req_key].update({f"{sample}{add_tag}": subdict[req_key]})
+    return dict_validated, set_genome
+
+
 class FACSplus(Foundation):
     # full dictionary with all available data
     _dict_available_data = _get_data_available("facs_data", dict_repair_facs_data)
 
     def __init__(self,
-                 df_rcm: pd.DataFrame = None,
-                 df_gbc: pd.DataFrame = None,
-                 facs_path_dict: dict = None):
+                 mult_rcm: dict = None,
+                 mult_gbc: dict = None,
+                 facs_rcm: dict = None,
+                 assembly_genome: str = None,
+                 tag: str = None):
         super().__init__()
-        self.df_rcm = df_rcm
-        self.df_gbc = df_gbc
-        self.facs_path_dict = facs_path_dict
+        self.mult_rcm = mult_rcm
+        self.mult_gbc = mult_gbc
+        self.facs_rcm = facs_rcm
+        self.assembly_genome = assembly_genome
+        self.tag = tag
         self.class_obj = FACSplus
         self.error_text = """
         #################################################
@@ -310,46 +362,55 @@ class FACSplus(Foundation):
     # Initialization of the facs expansion
     ####################################################################################################################
     @classmethod
-    def fetch_facs_expansion(cls, dataloader_dict: dict, add_tag: str = None):
+    def fetch_facs_expansion(cls, dataloader_path_dict: dict, dataloader_add_tag: str = None):
         """
 
         Parameters
         ----------
-        dataloader_dict: dict
+        dataloader_path_dict: dict
             Dictionary of paths containing both GBC and RCM data
+        dataloader_add_tag: str
+            Optional tag to mark multiomics data
         """
-
-        # validation and transformation of dataloader dict
-        identifier_tag = ""
-        dict_validated_rcm = {}
-        dict_validated_gbc = {}
-        set_genome = None
-        for sample, dict_gbc_rcm in dataloader_dict.items():  # make a general function out of this and use for facs too
-            if not isinstance(dict_gbc_rcm, dict):
-                raise ValueError(f"Value of dataloader_dict['{sample}'] must be opf type dict!")
-            list_assembly_genome_verify = []
-            for req_key in ["RCM", "GBC"]:
-                if req_key not in dict_gbc_rcm.keys():
-                    raise ValueError(f"'RCM' and 'GBC' must be in dict of dataloader_dict['{sample}']!")
-                list_assembly_genome_verify.append(Path(dict_gbc_rcm[req_key]).stem.split("__")[1])
-            if len(set(list_assembly_genome_verify)) > 1:
-                raise ValueError(f"Genomic Assemblies for RCM and GBC are inconsistent for {sample}!")
-            if set_genome is None:
-                set_genome = list_assembly_genome_verify[0]
-            else:
-                if set_genome == list_assembly_genome_verify[0]:
-                    if add_tag is not None:
-                        identifier_tag = f"__{add_tag}"
-                    dict_validated_rcm.update({f"{sample}{identifier_tag}": dict_gbc_rcm["RCM"]})
-                    dict_validated_gbc.update({f"{sample}{identifier_tag}": dict_gbc_rcm["GBC"]})
+        if dataloader_add_tag is None:
+            dataloader_add_tag = "mult_data"
+        dict_dataloader, set_genome = _validate_data_dict(dataloader_path_dict, ["RCM", "GBC"], dataloader_add_tag)
         dict_valid_facs = FACSplus.available_datasets(ref_genome=set_genome, return_true=True)
+        dict_facs = {}
+        for key, subdict in dict_valid_facs.items():
+            subdict_facs, _ = _validate_data_dict(subdict, ["RCM"], key)
+            if len(subdict_facs["RCM"]) > 0:
+                dict_facs.update(subdict_facs["RCM"])
 
+        return cls(mult_rcm=dict_dataloader["RCM"],
+                   mult_gbc=dict_dataloader["GBC"],
+                   facs_rcm=dict_facs,
+                   assembly_genome=set_genome,
+                   tag=dataloader_add_tag)
 
 
     # post-initialization
     # -------------------
+
+    def get_facs_paths(self):
+        # validate if initialized
+        FACSplus._check_loaded(self)
+        return self.facs_rcm
+
+    def get_mult_rcm(self):
+        # validate if initialized
+        FACSplus._check_loaded(self)
+        return self.mult_rcm
+
+    def get_mult_gbc(self):
+        # validate if initialized
+        FACSplus._check_loaded(self)
+        return self.mult_gbc
+
+
     def dataloader_extend_facs_hybrid(self,
                                       dataset_name: str,
+                                      query_mult_data: (str, None) = None,
                                       query_facs_data: (str, None) = None,
                                       is_facs_percent: (float, None) = None):
         """
@@ -361,19 +422,53 @@ class FACSplus(Foundation):
         ----------
         dataset_name: str
             Name of the generated FACS multiomics hybrid dataset.
+        query_mult_data: str, None
+            Name of multiomics data (pre-filtered by assembly genome) which fits the query by similarity score.
+            If 'None', will take the whole multiomics-data pool.
+            Space the search tags!
         query_facs_data: str, None
             Name of FACS data (pre-filtered by assembly genome) which fits the query by similarity score.
             If 'None', will take the whole FACS-data pool.
-            Structure: group_name;data_name
-                       if group_name is left empty -> all groups are searched
-                       if data_name is left empty -> all datasets for group are incorporated
+            Space the search tags!
         is_facs_percent: float, None
             Relative percentage of the multiomics dataset as additional FACS data (randomly picked cell entities).
             Range minimum is 0 (though that would be silly to select) to max cells of the FACS data.
             1 is equal to 100% of the multiomics cell-count if available.
         """
 
-        pass
+        # validate if initialized
+        FACSplus._check_loaded(self)
+
+        # query preparation
+        list_query_mult = query_mult_data.lower().split(sep=" ")
+        list_query_facs = query_facs_data.lower().split(sep=" ")
+
+        # key list preparation
+        dict_key_mult = {old.lower():old for old in list(self.mult_rcm.keys())}
+        dict_key_facs = {old.lower():old for old in list(self.facs_rcm.keys())}
+
+        # generate sets
+        def get_best_match_set(query_list: list, search_list: list) -> list:
+            list_out = []
+            for queries in query_list:
+                matches = best_match(queries, search_list, mult_match=True)
+                if matches is not None:
+                    list_out.extend(matches)
+            return list(set(list_out))
+
+        if query_mult_data is not None:
+            keys_mult = get_best_match_set(list_query_mult, list(dict_key_mult.keys()))
+            true_mult_keys = [dict_key_mult[key] for key in keys_mult]
+        if query_facs_data is not None:
+            keys_facs = get_best_match_set(list_query_facs, list(dict_key_facs.keys()))
+            true_facs_keys = [dict_key_facs[key] for key in keys_facs]
+
+        print(true_mult_keys, true_facs_keys)
+
+
+
+
+
     ####################################################################################################################
 
 # debugging
