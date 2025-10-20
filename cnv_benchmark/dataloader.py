@@ -463,7 +463,6 @@ class FACSplus(Foundation):
             keys_facs = get_best_match_set(list_query_facs, list(dict_key_facs.keys()))
             true_facs_keys = [dict_key_facs[key] for key in keys_facs]
 
-        print(true_mult_keys, true_facs_keys)
 
 
 
