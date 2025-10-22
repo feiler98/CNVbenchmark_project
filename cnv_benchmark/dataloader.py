@@ -484,15 +484,17 @@ class FACSplus(Foundation):
         if not isinstance(is_facs_percent, (int, float)) or is_facs_percent is not None:
             raise ValueError("Variable 'is_facs_percent' must be of the following type: int, float, None!")
 
-        if is_facs_percent < 0:
-            print("The amount of facs-data relative to the multiomics-data can't be lower than 0%!")
+        if is_facs_percent <= 0:
             is_facs_percent = 0
             adata_facs = None
+        elif is_facs_percent is None:
+            dict_facs_adata = {f"FACS__{tag}": sc.read_csv(path).T for tag, path in paths_facs.items()}
         else:
             list_facs_imported = []
             for _, paths in paths_facs:
                 list_facs_imported.extend(list(pd.read_csv(paths, index_col="Gene", nrows=1).columns))
                 list_facs_subset = ut.get_random_list_subset(list_facs_imported, len_mult_data*is_facs_percent)
+
 
 
 
