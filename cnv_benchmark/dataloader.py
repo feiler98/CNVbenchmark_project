@@ -13,9 +13,12 @@ Configuration file [dataloader.ini] handles the location of the benchmarking dat
 # imports
 # ______________________________________________________________________________________________________________________
 import pandas as pd
+import scanpy as sc
 from pathlib import Path
 import pyomics
+from pyomics import utils as ut
 from ._utility._classes import Foundation
+import anndata as ad
 from ._utility.dataloader_utility import _get_data_available, query_dataset, best_match
 # ______________________________________________________________________________________________________________________
 
@@ -412,7 +415,7 @@ class FACSplus(Foundation):
                                       dataset_name: str,
                                       query_mult_data: (str, None) = None,
                                       query_facs_data: (str, None) = None,
-                                      is_facs_percent: (float, None) = None):
+                                      is_facs_percent: (float, int, None) = None):
         """
         Expand the multiomics datasets provided by the dataloader with FACS-data.
         Integrates selected transcriptomic-data with the scverse-platform and saves the GBC- and RCM-files in a new
@@ -430,7 +433,7 @@ class FACSplus(Foundation):
             Name of FACS data (pre-filtered by assembly genome) which fits the query by similarity score.
             If 'None', will take the whole FACS-data pool.
             Space the search tags!
-        is_facs_percent: float, None
+        is_facs_percent: float, int, None
             Relative percentage of the multiomics dataset as additional FACS data (randomly picked cell entities).
             Range minimum is 0 (though that would be silly to select) to max cells of the FACS data.
             1 is equal to 100% of the multiomics cell-count if available.
@@ -456,12 +459,40 @@ class FACSplus(Foundation):
                     list_out.extend(matches)
             return list(set(list_out))
 
+        # multiomics-paths to adata
+        # -------------------------
         if query_mult_data is not None:
             keys_mult = get_best_match_set(list_query_mult, list(dict_key_mult.keys()))
             true_mult_keys = [dict_key_mult[key] for key in keys_mult]
+            paths_gbc = {k: self.mult_gbc[k] for k in true_mult_keys}
+            paths_rcm = {k: self.mult_rcm[k] for k in true_mult_keys}
+        else:
+            paths_gbc = self.mult_gbc
+            paths_rcm = self.mult_rcm
+
+
+        # facs-paths to filtered adata
+        # ----------------------------
+
         if query_facs_data is not None:
             keys_facs = get_best_match_set(list_query_facs, list(dict_key_facs.keys()))
             true_facs_keys = [dict_key_facs[key] for key in keys_facs]
+            paths_facs = {k: self.facs_rcm[k] for k in true_facs_keys}
+        else:
+            paths_facs = self.facs_rcm
+
+        if not isinstance(is_facs_percent, (int, float)) or is_facs_percent is not None:
+            raise ValueError("Variable 'is_facs_percent' must be of the following type: int, float, None!")
+
+        if is_facs_percent < 0:
+            print("The amount of facs-data relative to the multiomics-data can't be lower than 0%!")
+            is_facs_percent = 0
+            adata_facs = None
+        else:
+            list_facs_imported = []
+            for _, paths in paths_facs:
+                list_facs_imported.extend(list(pd.read_csv(paths, index_col="Gene", nrows=1).columns))
+                list_facs_subset = ut.get_random_list_subset(list_facs_imported, len_mult_data*is_facs_percent)
 
 
 
