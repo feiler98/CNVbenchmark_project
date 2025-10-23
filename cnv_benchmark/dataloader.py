@@ -16,10 +16,14 @@ import pandas as pd
 import scanpy as sc
 from pathlib import Path
 import pyomics
+from anndata import AnnData
 from pyomics import utils as ut
 from ._utility._classes import Foundation
 import anndata as ad
 from ._utility.dataloader_utility import _get_data_available, query_dataset, best_match
+from ._utility.print_utility import print_list
+import warnings
+warnings.filterwarnings("ignore")
 # ______________________________________________________________________________________________________________________
 
 
@@ -415,7 +419,9 @@ class FACSplus(Foundation):
                                       dataset_name: str,
                                       query_mult_data: (str, None) = None,
                                       query_facs_data: (str, None) = None,
-                                      is_facs_percent: (float, int, None) = None):
+                                      is_facs_percent: (float, int, None) = None,
+                                      integrate: bool = True,
+                                      refine_integration: bool = False):
         """
         Expand the multiomics datasets provided by the dataloader with FACS-data.
         Integrates selected transcriptomic-data with the scverse-platform and saves the GBC- and RCM-files in a new
@@ -437,10 +443,27 @@ class FACSplus(Foundation):
             Relative percentage of the multiomics dataset as additional FACS data (randomly picked cell entities).
             Range minimum is 0 (though that would be silly to select) to max cells of the FACS data.
             1 is equal to 100% of the multiomics cell-count if available.
+        integrate: bool
+            Powered by sc-verse SCVI.
+        refine_integration: bool
+            Will use supervised cell classification algorithms to repredict SCVI data-integration.
         """
 
+        # Parameter validation
+        # --------------------------------------------------------------------------------------------------------------
         # validate if initialized
         FACSplus._check_loaded(self)
+
+        # check is_facs_percent variable
+        if not isinstance(is_facs_percent, (int, float)) and is_facs_percent is not None:
+            raise ValueError("Variable 'is_facs_percent' must be of the following type: int, float, None!")
+
+        # integration variables
+        if refine_integration:
+            integrate = True
+        elif not integrate:
+            refine_integration = False
+        # --------------------------------------------------------------------------------------------------------------
 
         # query preparation
         list_query_mult = query_mult_data.lower().split(sep=" ")
@@ -464,41 +487,64 @@ class FACSplus(Foundation):
         if query_mult_data is not None:
             keys_mult = get_best_match_set(list_query_mult, list(dict_key_mult.keys()))
             true_mult_keys = [dict_key_mult[key] for key in keys_mult]
+            print_list(true_mult_keys, "Selected Multiomics Data")
             paths_gbc = {k: self.mult_gbc[k] for k in true_mult_keys}
             paths_rcm = {k: self.mult_rcm[k] for k in true_mult_keys}
         else:
             paths_gbc = self.mult_gbc
             paths_rcm = self.mult_rcm
 
+        dict_gbc_adata = {tag: sc.read_csv(path).T for tag, path in paths_gbc.items()}
+        dict_rcm_adata = {tag: sc.read_csv(path).T for tag, path in paths_rcm.items()}
+
+        count_total_cells_rcm = 0
+        for adata in list(dict_rcm_adata.values()):
+            count_total_cells_rcm+=len(adata.obs)
 
         # facs-paths to filtered adata
         # ----------------------------
-
         if query_facs_data is not None:
             keys_facs = get_best_match_set(list_query_facs, list(dict_key_facs.keys()))
             true_facs_keys = [dict_key_facs[key] for key in keys_facs]
+            print_list(true_facs_keys, "Selected FACS Data")
             paths_facs = {k: self.facs_rcm[k] for k in true_facs_keys}
         else:
             paths_facs = self.facs_rcm
 
-        if not isinstance(is_facs_percent, (int, float)) or is_facs_percent is not None:
-            raise ValueError("Variable 'is_facs_percent' must be of the following type: int, float, None!")
-
-        if is_facs_percent <= 0:
+        # handle different imputs relevant to facs-data
+        if is_facs_percent is None:
+            dict_adata_facs = {f"FACS__{tag}": sc.read_csv(path).T for tag, path in paths_facs.items()}
+        elif is_facs_percent <= 0 or len(paths_facs) == 0:
             is_facs_percent = 0
-            adata_facs = None
-        elif is_facs_percent is None:
-            dict_facs_adata = {f"FACS__{tag}": sc.read_csv(path).T for tag, path in paths_facs.items()}
+            dict_adata_facs = None
         else:
             list_facs_imported = []
-            for _, paths in paths_facs:
+            for _, paths in paths_facs.items():
                 list_facs_imported.extend(list(pd.read_csv(paths, index_col="Gene", nrows=1).columns))
-                list_facs_subset = ut.get_random_list_subset(list_facs_imported, len_mult_data*is_facs_percent)
+            list_facs_subset = ut.get_random_list_subset(list_facs_imported, count_total_cells_rcm*is_facs_percent)
 
+            # slice adata by matching obs
+            def filter_facs_adata(facs_adata: ad.AnnData, filter_list: list) -> AnnData | None:
+                facs_adata_obs_idx = list(facs_adata.obs.index)
+                list_filtered = [idx for idx in facs_adata_obs_idx if idx in filter_list]
+                if len(list_filtered) > 0:
+                    return facs_adata[list_filtered, :]
+                else:
+                    return None
 
+            dict_adata_facs = {}
+            for tag, path in paths_facs.items():
+                filtered_adata = filter_facs_adata(sc.read_csv(path).T, list_facs_subset)
+                if filtered_adata is not None:
+                    dict_adata_facs.update({f"FACS__{tag}": filtered_adata})
 
+        # if facs-data isn't None, append to multiomics rcm data
+        if dict_adata_facs is not None:
+            dict_rcm_adata.update(dict_adata_facs)
 
-
+        # preprocessing
+        preprocessed_adata = ut.preprocess_rcm_data(dict_rcm_adata)
+        return preprocessed_adata
 
 
     ####################################################################################################################
