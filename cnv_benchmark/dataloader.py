@@ -556,7 +556,6 @@ class FACSplus(Foundation):
         preprocessed_adata = ut.preprocess_rcm_data(dict_rcm_adata)
 
         # data-integration: (un)supervised scvi data integration
-        print(save_path/f"{dataset_name}.svg")
         dict_scvi = ut.scvi_data_integration(preprocessed_adata, save_fig=save_path/f"{dataset_name}.svg")
         scvi_keys = list(dict_scvi.keys())
 
@@ -576,25 +575,22 @@ class FACSplus(Foundation):
 
         # save adata
         if "transform_adata" in scvi_keys:
-            dict_scvi["transform_adata"].write_h5ad(save_path / f"{dataset_name}__scvi")
+            dict_scvi["transform_adata"].write_h5ad(save_path / f"{dataset_name}__scvi.h5")
 
         # save integrated data
         if "df_scvi_normExpression" in scvi_keys:
             dict_scvi["df_scvi_normExpression"].to_csv(save_path / f"scvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
         if "df_scanvi_normExpression" in scvi_keys:
             dict_scvi["df_scanvi_normExpression"].to_csv(save_path / f"scanvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
-
+        """
         # save JSON file
         if "modelParams_scvi" in scvi_keys:
             ut.save_as_json_dict(dict_scvi["modelParams_scvi"], str(save_path), f"{dataset_name}__params_scvi")
         if "modelParams_scanvi" in scvi_keys:
             ut.save_as_json_dict(dict_scvi["modelParams_scanvi"], str(save_path), f"{dataset_name}__params_scanvi")
+        """
 
         # --------------------------------------------------------------------------------------------------------------
-
-
-
-
 
     ####################################################################################################################
 
