@@ -18,6 +18,8 @@ from pathlib import Path
 import pyomics
 from anndata import AnnData
 from pyomics import utils as ut
+from pyomics.utils import benchmark_method
+
 from ._utility._classes import Foundation
 import anndata as ad
 from ._utility.dataloader_utility import _get_data_available, query_dataset, best_match
@@ -26,6 +28,8 @@ import warnings
 warnings.filterwarnings("ignore")
 # ______________________________________________________________________________________________________________________
 
+# Path of project
+project_path = Path(__file__).parent
 
 # Multiomics Data
 # ----------------------------------------------------------------------------------------------------------------------
@@ -414,7 +418,6 @@ class FACSplus(Foundation):
         FACSplus._check_loaded(self)
         return self.mult_gbc
 
-
     def dataloader_extend_facs_hybrid(self,
                                       dataset_name: str,
                                       query_mult_data: (str, None) = None,
@@ -448,6 +451,13 @@ class FACSplus(Foundation):
         refine_integration: bool
             Will use supervised cell classification algorithms to repredict SCVI data-integration.
         """
+
+        # Path DataLoader data
+        path_cfg = project_path / "config" / "dataloader.ini"
+        cfg_obj = pyomics.GetConfig().get_config(str(path_cfg))
+        data_section_dict = cfg_obj.return_section("data")
+        path_data = Path(data_section_dict["data_loc"])
+        save_path = path_data / dataset_name
 
         # Parameter validation
         # --------------------------------------------------------------------------------------------------------------
@@ -544,7 +554,46 @@ class FACSplus(Foundation):
 
         # preprocessing
         preprocessed_adata = ut.preprocess_rcm_data(dict_rcm_adata)
-        return preprocessed_adata
+
+        # data-integration: (un)supervised scvi data integration
+        print(save_path/f"{dataset_name}.svg")
+        dict_scvi = ut.scvi_data_integration(preprocessed_adata, save_fig=save_path/f"{dataset_name}.svg")
+        scvi_keys = list(dict_scvi.keys())
+
+        # saving process
+        # --------------------------------------------------------------------------------------------------------------
+        # create directory
+        if save_path.exists():
+            for p in save_path.glob("*"):
+                p.unlink()
+        else:
+            save_path.mkdir(parents=True, exist_ok=True)
+
+        # save GBC as individual files
+        for tag, adata_gbc in dict_gbc_adata.items():
+            gbc_file_name = f"{tag.split(sep="__")[0]}__{self.assembly_genome}__GBC.csv"
+            ut.anndata_to_csv(adata_gbc, save_path / gbc_file_name, tag)
+
+        # save adata
+        if "transform_adata" in scvi_keys:
+            dict_scvi["transform_adata"].write_h5ad(save_path / f"{dataset_name}__scvi")
+
+        # save integrated data
+        if "df_scvi_normExpression" in scvi_keys:
+            dict_scvi["df_scvi_normExpression"].to_csv(save_path / f"scvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
+        if "df_scanvi_normExpression" in scvi_keys:
+            dict_scvi["df_scanvi_normExpression"].to_csv(save_path / f"scanvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
+
+        # save JSON file
+        if "modelParams_scvi" in scvi_keys:
+            ut.save_as_json_dict(dict_scvi["modelParams_scvi"], str(save_path), f"{dataset_name}__params_scvi")
+        if "modelParams_scanvi" in scvi_keys:
+            ut.save_as_json_dict(dict_scvi["modelParams_scanvi"], str(save_path), f"{dataset_name}__params_scanvi")
+
+        # --------------------------------------------------------------------------------------------------------------
+
+
+
 
 
     ####################################################################################################################
