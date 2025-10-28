@@ -582,13 +582,13 @@ class FACSplus(Foundation):
             dict_scvi["df_scvi_normExpression"].to_csv(save_path / f"scvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
         if "df_scanvi_normExpression" in scvi_keys:
             dict_scvi["df_scanvi_normExpression"].to_csv(save_path / f"scanvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
-        """
+
         # save JSON file
         if "modelParams_scvi" in scvi_keys:
             ut.save_as_json_dict(dict_scvi["modelParams_scvi"], str(save_path), f"{dataset_name}__params_scvi")
         if "modelParams_scanvi" in scvi_keys:
             ut.save_as_json_dict(dict_scvi["modelParams_scanvi"], str(save_path), f"{dataset_name}__params_scanvi")
-        """
+
 
         # --------------------------------------------------------------------------------------------------------------
 
