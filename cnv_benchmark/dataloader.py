@@ -530,7 +530,7 @@ class FACSplus(Foundation):
         else:
             list_facs_imported = []
             for _, paths in paths_facs.items():
-                list_facs_imported.extend(list(pd.read_csv(paths, index_col="Gene", nrows=1).columns))
+                list_facs_imported.extend(list(pd.read_csv(paths, index_col="Gene", nrows=0).columns))
             list_facs_subset = ut.get_random_list_subset(list_facs_imported, count_total_cells_rcm*is_facs_percent)
 
             # slice adata by matching obs
