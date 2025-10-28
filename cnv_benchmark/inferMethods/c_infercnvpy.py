@@ -14,7 +14,7 @@ Documentation: https://infercnvpy.readthedocs.io/en/latest/
 # ______________________________________________________________________________________________________________________
 import pandas as pd
 from pathlib import Path
-from pyomics.utils import benchmark_method
+# from pyomics.utils import benchmark_method
 import infercnvpy as cnv
 from anndata import AnnData
 # ______________________________________________________________________________________________________________________
