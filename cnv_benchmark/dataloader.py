@@ -423,7 +423,6 @@ class FACSplus(Foundation):
                                       query_mult_data: (str, None) = None,
                                       query_facs_data: (str, None) = None,
                                       is_facs_percent: (float, int, None) = None,
-                                      integrate: bool = True,
                                       refine_integration: bool = False):
         """
         Expand the multiomics datasets provided by the dataloader with FACS-data.
@@ -446,11 +445,15 @@ class FACSplus(Foundation):
             Relative percentage of the multiomics dataset as additional FACS data (randomly picked cell entities).
             Range minimum is 0 (though that would be silly to select) to max cells of the FACS data.
             1 is equal to 100% of the multiomics cell-count if available.
-        integrate: bool
-            Powered by sc-verse SCVI.
         refine_integration: bool
             Will use supervised cell classification algorithms to repredict SCVI data-integration.
         """
+
+        add_tag = "scvi_"
+        if refine_integration:
+            add_tag = "scanvi_"
+
+        dataset_name = add_tag + dataset_name
 
         # Path DataLoader data
         path_cfg = project_path / "config" / "dataloader.ini"
@@ -467,12 +470,6 @@ class FACSplus(Foundation):
         # check is_facs_percent variable
         if not isinstance(is_facs_percent, (int, float)) and is_facs_percent is not None:
             raise ValueError("Variable 'is_facs_percent' must be of the following type: int, float, None!")
-
-        # integration variables
-        if refine_integration:
-            integrate = True
-        elif not integrate:
-            refine_integration = False
         # --------------------------------------------------------------------------------------------------------------
 
         # query preparation
@@ -504,7 +501,7 @@ class FACSplus(Foundation):
             paths_gbc = self.mult_gbc
             paths_rcm = self.mult_rcm
 
-        dict_gbc_df = {tag: pd.read_csv(path) for tag, path in paths_gbc.items()}
+        dict_gbc_df = {tag: pd.read_csv(path, index_col="CHR") for tag, path in paths_gbc.items()}
         dict_rcm_adata = {tag: sc.read_csv(path).T for tag, path in paths_rcm.items()}
 
         count_total_cells_rcm = 0
@@ -569,7 +566,8 @@ class FACSplus(Foundation):
         scvi_keys = list(dict_scvi.keys())
 
         # save GBC as individual files
-        pd.concat(dict_gbc_df.values(), axis=1).to_csv(save_path / f"{dataset_name}__{self.assembly_genome}__GBC.csv")
+        df_gbc = pd.concat(dict_gbc_df.values(), axis=1)
+        df_gbc.to_csv(save_path / f"{dataset_name}__{self.assembly_genome}__GBC.csv")
 
         # save adata
         if "transform_adata" in scvi_keys:
@@ -577,7 +575,9 @@ class FACSplus(Foundation):
 
         # save integrated data
         if "df_scvi_normExpression" in scvi_keys:
-            dict_scvi["df_scvi_normExpression"].to_csv(save_path / f"{dataset_name}__{self.assembly_genome}__RCM.csv")
+            df_scvi = dict_scvi["df_scvi_normExpression"]
+            df_scvi.index.rename("Gene", inplace=True)
+            df_scvi.to_csv(save_path / f"{dataset_name}__{self.assembly_genome}__RCM.csv")
 
         # save JSON file
         if "modelParams_scvi" in scvi_keys:
