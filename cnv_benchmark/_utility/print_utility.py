@@ -4,19 +4,14 @@
 PRINT_UTILITY
 -------------
 
-Utility for the multiomics and facs data.
-General functions which optimize handling of the data
+General terminal-printing utility.
 
 ------------------------------------------------------------------------------------------------------------------------
 """
 
 # imports
 # ______________________________________________________________________________________________________________________
-import ast
-import re
-from pathlib import Path
-from Bio import Align
-import pyomics
+
 # ______________________________________________________________________________________________________________________
 
 def print_list(list_input: list, header_str: str):
