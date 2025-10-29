@@ -504,7 +504,7 @@ class FACSplus(Foundation):
             paths_gbc = self.mult_gbc
             paths_rcm = self.mult_rcm
 
-        dict_gbc_adata = {tag: sc.read_csv(path).T for tag, path in paths_gbc.items()}
+        dict_gbc_df = {tag: pd.read_csv(path) for tag, path in paths_gbc.items()}
         dict_rcm_adata = {tag: sc.read_csv(path).T for tag, path in paths_rcm.items()}
 
         count_total_cells_rcm = 0
@@ -555,10 +555,6 @@ class FACSplus(Foundation):
         # preprocessing
         preprocessed_adata = ut.preprocess_rcm_data(dict_rcm_adata)
 
-        # data-integration: (un)supervised scvi data integration
-        dict_scvi = ut.scvi_data_integration(preprocessed_adata, save_fig=save_path/f"{dataset_name}.svg")
-        scvi_keys = list(dict_scvi.keys())
-
         # saving process
         # --------------------------------------------------------------------------------------------------------------
         # create directory
@@ -568,10 +564,12 @@ class FACSplus(Foundation):
         else:
             save_path.mkdir(parents=True, exist_ok=True)
 
+        # data-integration: (un)supervised scvi data integration
+        dict_scvi = ut.scvi_data_integration(preprocessed_adata, save_fig=save_path/f"{dataset_name}.svg")
+        scvi_keys = list(dict_scvi.keys())
+
         # save GBC as individual files
-        for tag, adata_gbc in dict_gbc_adata.items():
-            gbc_file_name = f"{tag.split(sep="__")[0]}__{self.assembly_genome}__GBC.csv"
-            ut.anndata_to_csv(adata_gbc, save_path / gbc_file_name, tag)
+        pd.concat(dict_gbc_df.values(), axis=1).to_csv(save_path / f"{dataset_name}__{self.assembly_genome}__GBC.csv")
 
         # save adata
         if "transform_adata" in scvi_keys:
@@ -579,9 +577,7 @@ class FACSplus(Foundation):
 
         # save integrated data
         if "df_scvi_normExpression" in scvi_keys:
-            dict_scvi["df_scvi_normExpression"].to_csv(save_path / f"scvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
-        if "df_scanvi_normExpression" in scvi_keys:
-            dict_scvi["df_scanvi_normExpression"].to_csv(save_path / f"scanvi_{dataset_name}__{self.assembly_genome}__RCM.csv")
+            dict_scvi["df_scvi_normExpression"].to_csv(save_path / f"{dataset_name}__{self.assembly_genome}__RCM.csv")
 
         # save JSON file
         if "modelParams_scvi" in scvi_keys:

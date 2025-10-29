@@ -68,7 +68,7 @@ def _get_data_available(section: str, dict_repair_dataloader_data: dict) -> dict
     dict_data_overview = {}
     requires_list =  ast.literal_eval(dict_data["requires"])
     for data_name, p in dict_data_dir.items():
-        dict_available_genomic_files = {p_csv.stem: p_csv for p_csv in p.glob("*.csv")} # get list of all csv file paths --> standard format of count matrices
+        dict_available_genomic_files = {p_csv.stem: p_csv for p_csv in p.glob("*.csv")} # get list of all csv file paths -> standard format of count matrices
         set_data_tags = set([p.stem.split(sep="__")[0] for p in list(dict_available_genomic_files.values())])  # get unique dataset identifier tag
         dict_accepted = {}
         for tags in set_data_tags:
