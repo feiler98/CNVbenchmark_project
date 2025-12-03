@@ -292,7 +292,7 @@ def _validate_data_dict(input_dict: dict, req_keys_subdict: list, add_tag: str =
     return dict_validated, set_genome
 
 
-class FACSplus(Foundation):
+class NormPlus(Foundation):
     # full dictionary with all available data
     _dict_available_data = _get_data_available("facs_data", dict_repair_facs_data)
 
@@ -308,11 +308,11 @@ class FACSplus(Foundation):
         self.facs_rcm = facs_rcm
         self.assembly_genome = assembly_genome
         self.tag = tag
-        self.class_obj = FACSplus
+        self.class_obj = NormPlus
         self.error_text = """
         #################################################
         Class has not been initialized!
-        Use FACSplus.fetch_matching_data(group_data: str) first.
+        Use NormPlus.fetch_matching_data(group_data: str) first.
         #################################################
         """
 
@@ -333,12 +333,12 @@ class FACSplus(Foundation):
         print("""
 
 ========================================
-      // FACS | Available Datasets
+      // Normal Cells | Available Datasets
 ----------------------------------------""")
 
         list_count_cells = []
         dict_group = {}
-        for key, subdict in FACSplus._dict_available_data.items():
+        for key, subdict in NormPlus._dict_available_data.items():
             # header styling
             print(f"""
     > {key}""")
@@ -386,7 +386,7 @@ class FACSplus(Foundation):
         if dataloader_add_tag is None:
             dataloader_add_tag = "mult_data"
         dict_dataloader, set_genome = _validate_data_dict(dataloader_path_dict, ["RCM", "GBC"], dataloader_add_tag)
-        dict_valid_facs = FACSplus.available_datasets(ref_genome=set_genome, return_true=True)
+        dict_valid_facs = NormPlus.available_datasets(ref_genome=set_genome, return_true=True)
         dict_facs = {}
         for key, subdict in dict_valid_facs.items():
             subdict_facs, _ = _validate_data_dict(subdict, ["RCM"], key)
@@ -405,17 +405,17 @@ class FACSplus(Foundation):
 
     def get_facs_paths(self):
         # validate if initialized
-        FACSplus._check_loaded(self)
+        NormPlus._check_loaded(self)
         return self.facs_rcm
 
     def get_mult_rcm(self):
         # validate if initialized
-        FACSplus._check_loaded(self)
+        NormPlus._check_loaded(self)
         return self.mult_rcm
 
     def get_mult_gbc(self):
         # validate if initialized
-        FACSplus._check_loaded(self)
+        NormPlus._check_loaded(self)
         return self.mult_gbc
 
     def dataloader_extend_facs_hybrid(self,
@@ -465,7 +465,7 @@ class FACSplus(Foundation):
         # Parameter validation
         # --------------------------------------------------------------------------------------------------------------
         # validate if initialized
-        FACSplus._check_loaded(self)
+        NormPlus._check_loaded(self)
 
         # check is_facs_percent variable
         if not isinstance(is_facs_percent, (int, float)) and is_facs_percent is not None:
